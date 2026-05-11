@@ -200,15 +200,62 @@ Pencarian dilakukan menggunakan Stored Procedure `sp_SearchMember` dengan parame
 Hasil pencarian akan langsung ditampilkan secara real-time pada `DataGridView` sehingga mempermudah admin dalam menemukan data member tertentu.
 
 
-# Keamanan Sistem
+5. SQL INJECTION
+   <img width="798" height="475" alt="Screenshot 2026-05-11 194617" src="https://github.com/user-attachments/assets/aa0f64e7-2193-4e7e-a9bb-6ae320a7a7c7" />
+   ## Pencegahan SQL Injection
 
-Seluruh proses CRUD pada aplikasi telah menerapkan:
+Pada aplikasi Sistem Manajemen Data Gym, sistem keamanan database telah menerapkan metode pencegahan SQL Injection menggunakan **Parameterized Query** dan **Stored Procedure** pada proses pencarian data member (Search Member).
 
-* Stored Procedure
-* Parameterized Query (`AddWithValue`)
-* Validasi Input
+SQL Injection adalah teknik serangan yang dilakukan dengan memasukkan perintah SQL berbahaya melalui form input untuk memanipulasi database secara ilegal. Jika aplikasi tidak memiliki validasi keamanan yang baik, maka data pada database dapat dicuri, diubah, bahkan dihapus.
 
-Implementasi tersebut bertujuan untuk mencegah serangan SQL Injection dan meningkatkan keamanan aplikasi dalam proses pengolahan data database.
+Untuk mencegah hal tersebut, aplikasi menggunakan parameter SQL melalui `SqlCommand` sehingga input dari pengguna tidak akan dieksekusi sebagai perintah SQL.
+
+### Implementasi Pencegahan SQL Injection
+
+Fitur pencarian member menggunakan Stored Procedure `sp_SearchMember` dan parameter `@keyword`.
+
+```csharp
+SqlCommand cmd =
+    new SqlCommand(
+        "sp_SearchMember",
+        conn
+    );
+
+cmd.CommandType =
+    CommandType.StoredProcedure;
+
+cmd.Parameters.AddWithValue(
+    "@keyword",
+    txtcari.Text
+);
+```
+
+### Stored Procedure SQL Server
+
+```sql
+CREATE PROCEDURE sp_SearchMember
+    @keyword VARCHAR(100)
+AS
+BEGIN
+    SELECT *
+    FROM Member
+    WHERE nama LIKE '%' + @keyword + '%'
+END
+```
+
+### Skenario SQL Injection
+
+Pengujian dilakukan dengan memasukkan karakter SQL Injection pada form pencarian, contohnya:
+
+```sql
+' OR '1'='1
+```
+
+### Hasil Pengujian
+
+Sistem tidak menjalankan input tersebut sebagai perintah SQL, melainkan hanya sebagai teks pencarian biasa. Data pada database tetap aman dan aplikasi tidak mengalami manipulasi query.
+
+
 
 
      
