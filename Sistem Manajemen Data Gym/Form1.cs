@@ -89,7 +89,7 @@ namespace Sistem_Manajemen_Data_Gym
                 0,
                 DateTime.Now.ToString("dd/MM/yyyy"),
                 aktivitas
-            );
+            ); 
         }
 
 
