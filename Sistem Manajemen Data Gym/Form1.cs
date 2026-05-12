@@ -13,6 +13,7 @@ namespace Sistem_Manajemen_Data_Gym
 {
     public partial class Form1 : Form
     {
+        BindingSource bs = new BindingSource();
         string connectionString = "Data Source=KHRLFTAMA\\ARIF;Initial Catalog=DB_Gym;Integrated Security=True";
         public Form1()
         {
@@ -26,20 +27,34 @@ namespace Sistem_Manajemen_Data_Gym
                 using (SqlConnection conn = new SqlConnection(connectionString))
                 {
                     conn.Open();
-                    // Kalau berhasil, ganti teks di label atau munculkan pesan
+
                     lblStatusKoneksi.Text = "Connected to DB_Gym";
                     lblStatusKoneksi.ForeColor = Color.Green;
                 }
+
+                dataGridView2.ColumnCount = 2;
+
+                dataGridView2.Columns[0].Name = "Waktu & Tanggal";
+                dataGridView2.Columns[1].Name = "Aktivitas";
+
+                dataGridView2.AutoSizeColumnsMode =
+                DataGridViewAutoSizeColumnsMode.Fill;
+
+                TampilkanData();
+                UpdateTotalMember();
+
+                // BINDING NAVIGATOR
+                bindingNavigator1.BindingSource = bs;
             }
             catch (Exception ex)
             {
                 lblStatusKoneksi.Text = "Disconnect";
                 lblStatusKoneksi.ForeColor = Color.Red;
-                MessageBox.Show("Koneksi Error: " + ex.Message);
+
+                MessageBox.Show("Koneksi Error: " + ex.Message); 
             }
         }
 
-        
 
         private void lblJudul_Click(object sender, EventArgs e)
         {
@@ -48,33 +63,33 @@ namespace Sistem_Manajemen_Data_Gym
 
         private void button1_Click(object sender, EventArgs e)
         {
+
             try
             {
-                using (SqlConnection conn = new SqlConnection(connectionString))
-                {
-                    // Query untuk mengambil seluruh data dari tabel member [cite: 586]
-                    string query = "SELECT * FROM Member";
-                    SqlCommand cmd = new SqlCommand(query, conn);
+                // Tampilkan semua data member ke tabel kiri
+                TampilkanData();
 
-                    conn.Open(); // Bagian B - Membuka koneksi [cite: 663]
+                // Update total member
+                UpdateTotalMember();
 
-                    // Menggunakan SqlDataReader untuk membaca data [cite: 661, 673]
-                    SqlDataReader dr = cmd.ExecuteReader();
+                // Kosongkan tabel kanan saat refresh
+                dataGridView2.DataSource = null;
 
-                    // Membuat DataTable untuk menampung hasil bacaan
-                    DataTable dt = new DataTable();
-                    dt.Load(dr);
-
-                    dataGridView2.DataSource = dt;
-
-                    // Tutup reader setelah digunakan
-                    dr.Close();
-                }
+                MessageBox.Show("Data berhasil ditampilkan!", "Informasi");
             }
             catch (Exception ex)
             {
                 MessageBox.Show("Gagal menampilkan data: " + ex.Message);
             }
+        }
+
+        private void TambahAktivitas(string aktivitas)
+        {
+            dataGridView2.Rows.Insert(
+                0,
+                DateTime.Now.ToString("dd/MM/yyyy"),
+                aktivitas
+            );
         }
 
 
@@ -92,31 +107,58 @@ namespace Sistem_Manajemen_Data_Gym
         {
             try
             {
-                using (SqlConnection conn = new SqlConnection(connectionString))
+                using (SqlConnection conn =
+                    new SqlConnection(connectionString))
                 {
-                    // Query mencari nama yang mengandung kata di textbox cari
-                    string query = "SELECT * FROM Member WHERE nama LIKE @cari";
-                    SqlCommand cmd = new SqlCommand(query, conn);
+                    SqlCommand cmd =
+                        new SqlCommand(
+                            "sp_SearchMember",
+                            conn
+                        );
 
-                    // Menggunakan wildcard % agar pencarian lebih fleksibel
-                    cmd.Parameters.AddWithValue("@cari", "%" + txtcari.Text + "%");
+                    cmd.CommandType =
+                        CommandType.StoredProcedure;
 
-                    SqlDataAdapter da = new SqlDataAdapter(cmd);
-                    DataTable dt = new DataTable();
+                    cmd.Parameters.AddWithValue(
+                        "@keyword",
+                        txtcari.Text
+                    );
+
+                    SqlDataAdapter da =
+                        new SqlDataAdapter(cmd);
+
+                    DataTable dt =
+                        new DataTable();
+
                     da.Fill(dt);
 
-                    // Menampilkan hasil pencarian ke DataGridView secara real-time
                     dataGridView1.DataSource = dt;
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Terjadi kesalahan saat mencari: " + ex.Message);
+                MessageBox.Show(
+                    "Terjadi kesalahan saat mencari: "
+                    + ex.Message
+                );
             }
         }
 
         private void txtnama_TextChanged(object sender, EventArgs e)
         {
+            // Validasi hanya huruf dan spasi
+            if (!System.Text.RegularExpressions.Regex.IsMatch(txtnama.Text, "^[a-zA-Z ]*$"))
+            {
+                MessageBox.Show("Nama hanya boleh berisi huruf!", "Validasi Nama");
+
+                // Hapus karakter terakhir
+                txtnama.Text = txtnama.Text.Remove(txtnama.Text.Length - 1);
+
+                // Kursor kembali ke belakang
+                txtnama.SelectionStart = txtnama.Text.Length;
+            }
+
+            // Validasi kosong
             if (string.IsNullOrWhiteSpace(txtnama.Text))
             {
                 txtnama.BackColor = Color.LightPink;
@@ -131,22 +173,34 @@ namespace Sistem_Manajemen_Data_Gym
         {
             if (!System.Text.RegularExpressions.Regex.IsMatch(txthp.Text, "^[0-9]*$"))
             {
-                MessageBox.Show("Nomor HP hanya boleh berisi angka!", "Peringatan Validasi");
-                // Menghapus karakter terakhir yang bukan angka
+                MessageBox.Show("Nomor HP hanya boleh berisi angka!", "Validasi");
+
                 txthp.Text = txthp.Text.Remove(txthp.Text.Length - 1);
                 txthp.SelectionStart = txthp.Text.Length;
             }
 
-            // Memberikan indikator warna jika kolom kosong (Bagian F)
+            // Maksimal 13 digit
+            if (txthp.Text.Length > 13)
+            {
+                MessageBox.Show("Nomor HP maksimal 13 digit!", "Validasi");
+
+                txthp.Text = txthp.Text.Substring(0, 13);
+                txthp.SelectionStart = txthp.Text.Length;
+            }
+
+            // Warna validasi
             if (string.IsNullOrWhiteSpace(txthp.Text))
             {
                 txthp.BackColor = Color.LightPink;
+            }
+            else if (txthp.Text.Length < 10 || txthp.Text.Length > 13)
+            {
+                txthp.BackColor = Color.LightYellow;
             }
             else
             {
                 txthp.BackColor = Color.White;
             }
-
         }
 
         private void cbstatus_SelectedIndexChanged(object sender, EventArgs e)
@@ -182,37 +236,52 @@ namespace Sistem_Manajemen_Data_Gym
         {
             if (string.IsNullOrWhiteSpace(txtnama.Text) || string.IsNullOrWhiteSpace(txthp.Text) || cbstatus.SelectedIndex == -1)
             {
-                 MessageBox.Show("Semua kolom (Nama, No HP, dan Status) wajib diisi!", "Peringatan Validasi"); 
-        return;
+                MessageBox.Show("Semua kolom (Nama, No HP, dan Status) wajib diisi!", "Peringatan Validasi");
+                return;
+            }
+
+            // Validasi nomor HP minimal 10 digit dan maksimal 13 digit
+            if (txthp.Text.Length < 10 || txthp.Text.Length > 13)
+            {
+                MessageBox.Show("Nomor HP harus 10 sampai 13 digit!", "Validasi");
+
+                txthp.Focus();
+                return;
+            }
+
+            // Validasi nama hanya huruf
+            if (!System.Text.RegularExpressions.Regex.IsMatch(txtnama.Text, "^[a-zA-Z ]+$"))
+            {
+                MessageBox.Show("Nama hanya boleh huruf dan spasi!", "Validasi Nama");
+
+                txtnama.Focus();
+                return;
             }
 
             try
             {
-                // 2. Koneksi ke Database [cite: 1049, 1133]
                 using (SqlConnection conn = new SqlConnection(connectionString))
                 {
-                    // 3. Query INSERT menggunakan SqlCommand [cite: 1130, 1136]
-                    string query = "INSERT INTO Member (nama, no_hp, status_aktif) VALUES (@nama, @hp, @status)";
-                    SqlCommand cmd = new SqlCommand(query, conn);
+                    SqlCommand cmd =
+                    new SqlCommand("sp_InsertMember", conn);
 
-                    // Parameterisasi untuk keamanan data [cite: 998]
-                     cmd.Parameters.AddWithValue("@nama", txtnama.Text); 
-                     cmd.Parameters.AddWithValue("@hp", txthp.Text); 
-                     cmd.Parameters.AddWithValue("@status", cbstatus.Text); 
+                    cmd.CommandType = CommandType.StoredProcedure;
 
-            conn.Open();
+                    cmd.Parameters.AddWithValue("@nama", txtnama.Text);
+                    cmd.Parameters.AddWithValue("@hp", txthp.Text);
+                    cmd.Parameters.AddWithValue("@status", cbstatus.Text);
 
-                    // 4. Eksekusi Query (ExecuteNonQuery) 
+                    conn.Open();
+
+                    TambahAktivitas("Menambah member: " + txtnama.Text);
+
                     cmd.ExecuteNonQuery();
 
-                    // 5. Pesan Konfirmasi Sukses 
-                    MessageBox.Show("Data Transaksi Berhasil Disimpan", "Informasi");
+                    MessageBox.Show("Data berhasil disimpan!");
 
-                    // 6. Refresh Tampilan & Statistik
-                    TampilkanData(); // Memanggil fungsi Select/DataReader [cite: 1143]
-                    UpdateTotalMember(); // Memanggil fungsi ExecuteScalar [cite: 1141]
+                    TampilkanData();
+                    UpdateTotalMember();
 
-                    // Bersihkan Form
                     txtnama.Clear();
                     txthp.Clear();
                     cbstatus.SelectedIndex = -1;
@@ -228,49 +297,128 @@ namespace Sistem_Manajemen_Data_Gym
         {
             if (dataGridView1.CurrentRow != null)
             {
-                // 1. Ambil ID_Member sebagai kunci utama (paling akurat)
-                // Pastikan di DataGridView kamu ada kolom id_member
-                string idMember = dataGridView1.CurrentRow.Cells["id_member"].Value.ToString();
+                // Ambil ID dari tabel lalu kurangi 100
+                int idMember = Convert.ToInt32(
+                    dataGridView1.CurrentRow.Cells["id_member"].Value
+                ) - 100;
+
+                // Validasi nomor HP
+                if (txthp.Text.Length < 10 || txthp.Text.Length > 13)
+                {
+                    MessageBox.Show(
+                        "Nomor HP harus 10 sampai 13 digit!",
+                        "Validasi"
+                    );
+
+                    txthp.Focus();
+                    return;
+                }
+
+                // Validasi nama
+                if (!System.Text.RegularExpressions.Regex.IsMatch(
+                    txtnama.Text,
+                    "^[a-zA-Z ]+$"))
+                {
+                    MessageBox.Show(
+                        "Nama hanya boleh huruf dan spasi!",
+                        "Validasi Nama"
+                    );
+
+                    txtnama.Focus();
+                    return;
+                }
+
+                // Validasi status
+                if (cbstatus.SelectedIndex == -1)
+                {
+                    MessageBox.Show(
+                        "Pilih status member terlebih dahulu!"
+                    );
+
+                    cbstatus.Focus();
+                    return;
+                }
 
                 try
                 {
-                    using (SqlConnection conn = new SqlConnection(connectionString))
+                    using (SqlConnection conn =
+                        new SqlConnection(connectionString))
                     {
-                        // 2. Query UPDATE menggunakan ID agar tidak salah sasaran
-                        string query = "UPDATE Member SET nama = @nama, no_hp = @hp, status_aktif = @status WHERE id_member = @id";
-                        SqlCommand cmd = new SqlCommand(query, conn);
+                        SqlCommand cmd =
+                        new SqlCommand(
+                            "sp_UpdateMember",
+                            conn
+                        );
 
-                        // Parameter data baru
-                        cmd.Parameters.AddWithValue("@nama", txtnama.Text);
-                        cmd.Parameters.AddWithValue("@hp", txthp.Text);
-                        cmd.Parameters.AddWithValue("@status", cbstatus.Text);
-                        cmd.Parameters.AddWithValue("@id", idMember);
+                        cmd.CommandType =
+                            CommandType.StoredProcedure;
+
+                        cmd.Parameters.AddWithValue(
+                            "@id",
+                            idMember
+                        );
+
+                        cmd.Parameters.AddWithValue(
+                            "@nama",
+                            txtnama.Text
+                        );
+
+                        cmd.Parameters.AddWithValue(
+                            "@hp",
+                            txthp.Text
+                        );
+
+                        cmd.Parameters.AddWithValue(
+                            "@status",
+                            cbstatus.Text
+                        );
 
                         conn.Open();
-                        int rowsAffected = cmd.ExecuteNonQuery();
+
+                        int rowsAffected =
+                            cmd.ExecuteNonQuery();
+
+                        TambahAktivitas(
+                            "Mengupdate member: "
+                            + txtnama.Text
+                        );
 
                         if (rowsAffected > 0)
                         {
-                            MessageBox.Show("Data Member Berhasil Diupdate!", "Sukses");
+                            MessageBox.Show(
+                                "Data Member Berhasil Diupdate!",
+                                "Sukses"
+                            );
 
-                            // 3. Refresh tabel dan total
                             TampilkanData();
+
                             UpdateTotalMember();
+
+                            txtnama.Clear();
+                            txthp.Clear();
+
+                            cbstatus.SelectedIndex = -1;
                         }
                         else
                         {
-                            MessageBox.Show("Data tidak ditemukan di database.");
+                            MessageBox.Show(
+                                "Data gagal diupdate!"
+                            );
                         }
                     }
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show("Error Update: " + ex.Message);
+                    MessageBox.Show(
+                        "Error Update: " + ex.Message
+                    );
                 }
             }
             else
             {
-                MessageBox.Show("Pilih baris di tabel dulu, Mas!");
+                MessageBox.Show(
+                    "Pilih data member terlebih dahulu!"
+                );
             }
         }
 
@@ -278,45 +426,76 @@ namespace Sistem_Manajemen_Data_Gym
         {
             if (dataGridView1.CurrentRow != null)
             {
-                // Ambil Nama atau ID dari baris yang dipilih sebagai kunci penghapusan
-                string namaMember = dataGridView1.CurrentRow.Cells["Nama"].Value.ToString();
+                // Ambil nama member dari tabel
+                string namaMember =
+                    dataGridView1.CurrentRow.Cells["nama"]
+                    .Value.ToString();
 
-                // Konfirmasi sebelum menghapus
-                DialogResult dialogResult = MessageBox.Show("Apakah Anda yakin ingin menghapus member: " + namaMember + "?", "Konfirmasi Hapus", MessageBoxButtons.YesNo);
+                // Konfirmasi hapus
+                DialogResult dialogResult =
+                    MessageBox.Show(
+                        "Apakah Anda yakin ingin menghapus member: "
+                        + namaMember + "?",
+                        "Konfirmasi Hapus",
+                        MessageBoxButtons.YesNo
+                    );
 
                 if (dialogResult == DialogResult.Yes)
                 {
                     try
                     {
-                        using (SqlConnection conn = new SqlConnection(connectionString))
+                        using (SqlConnection conn =
+                            new SqlConnection(connectionString))
                         {
-                            // 2. Query SQL untuk menghapus data (Bagian F - Delete)
-                            string query = "DELETE FROM Member WHERE Nama = @nama";
-                            SqlCommand cmd = new SqlCommand(query, conn);
-                            cmd.Parameters.AddWithValue("@nama", namaMember);
+                            SqlCommand cmd =
+                                new SqlCommand(
+                                    "sp_DeleteMember",
+                                    conn
+                                );
+
+                            cmd.CommandType =
+                                CommandType.StoredProcedure;
+
+                            cmd.Parameters.AddWithValue(
+                                "@nama",
+                                namaMember
+                            );
 
                             conn.Open();
+
                             cmd.ExecuteNonQuery();
-                            MessageBox.Show("Data Member Berhasil Dihapus", "Informasi");
+
+                            MessageBox.Show(
+                                "Data Member Berhasil Dihapus",
+                                "Informasi"
+                            );
                         }
 
-                        // 3. Refresh tampilan tabel dan statistik agar sinkron
-                        TampilkanData(); // Memanggil fungsi Select
-                        UpdateTotalMember(); // Memanggil fungsi ExecuteScalar
+                        TambahAktivitas(
+                            "Menghapus member: "
+                            + namaMember
+                        );
+
+                        TampilkanData();
+
+                        UpdateTotalMember();
                     }
                     catch (Exception ex)
                     {
-                        MessageBox.Show("Gagal menghapus data: " + ex.Message);
+                        MessageBox.Show(
+                            "Gagal menghapus data: "
+                            + ex.Message
+                        );
                     }
                 }
             }
             else
             {
-                MessageBox.Show("Silakan pilih baris data di tabel yang ingin dihapus terlebih dahulu.");
+                MessageBox.Show(
+                    "Silakan pilih data terlebih dahulu."
+                );
             }
         }
-        // The errors occur because the methods 'TampilkanData' and 'UpdateTotalMember' are called in your code, but they are not defined anywhere in your Form1 class. 
-        // To fix the errors, you need to implement these methods. Here are simple example implementations you can add to your Form1 class:
 
         private void TampilkanData()
         {
@@ -324,12 +503,17 @@ namespace Sistem_Manajemen_Data_Gym
             {
                 using (SqlConnection conn = new SqlConnection(connectionString))
                 {
-                    string query = "SELECT * FROM Member";
-                    SqlCommand cmd = new SqlCommand(query, conn);
-                    SqlDataAdapter da = new SqlDataAdapter(cmd);
+                    string query =
+                        "SELECT * FROM vw_Member ORDER BY id_member ASC";
+
+                    SqlDataAdapter da = new SqlDataAdapter(query, conn);
+
                     DataTable dt = new DataTable();
+
                     da.Fill(dt);
-                    dataGridView1.DataSource = dt;
+
+                    bs.DataSource = dt;
+                    dataGridView1.DataSource = bs;
                 }
             }
             catch (Exception ex)
@@ -360,6 +544,8 @@ namespace Sistem_Manajemen_Data_Gym
 
         private void dataGridView2_CellContentClick(object sender, DataGridViewCellEventArgs e)
         {
+
+
             foreach (DataGridViewRow row in dataGridView2.Rows)
             {
                 if (row.Cells["status_aktif"].Value != null &&
@@ -374,39 +560,104 @@ namespace Sistem_Manajemen_Data_Gym
 
         private void dataGridView1_CellContentClick(object sender, DataGridViewCellEventArgs e)
         {
-            if (e.RowIndex >= 0)
-            {
-                // Ambil baris yang sedang diklik
-                DataGridViewRow row = dataGridView1.Rows[e.RowIndex];
+             if (e.RowIndex >= 0)
+    {
+        DataGridViewRow row = dataGridView1.Rows[e.RowIndex];
 
-                // Masukkan data dari kolom tabel ke Textbox/Combobox masing-masing
-                // Pastikan nama kolom ("nama", "no_hp", "status_aktif") sesuai dengan database kamu
-                txtnama.Text = row.Cells["nama"].Value.ToString();
-                txthp.Text = row.Cells["no_hp"].Value.ToString();
-                cbstatus.Text = row.Cells["status_aktif"].Value.ToString();
-            }
-        }
+        txtnama.Text = row.Cells["nama"].Value.ToString();
+        txthp.Text = row.Cells["no_hp"].Value.ToString();
+        cbstatus.Text = row.Cells["status_aktif"].Value.ToString();
+
+        string idMember = row.Cells["id_member"].Value.ToString();
+    }
+}
 
         private void RefreshLogDatabase()
         {
-            using (SqlConnection conn = new SqlConnection(connectionString))
+            try
             {
-                // Menampilkan 10 data terbaru yang baru masuk (berdasarkan ID terbesar)
-                string query = "SELECT TOP 10 id_member, nama, status_aktif FROM Member ORDER BY id_member DESC";
-                SqlDataAdapter da = new SqlDataAdapter(query, conn);
-                DataTable dt = new DataTable();
-                da.Fill(dt);
+                using (SqlConnection conn = new SqlConnection(connectionString))
+                {
+                    // Menampilkan 5 member terbaru
+                    string query = @"
+            SELECT TOP 5
+            (id_member + 100) AS id_member,
+            nama,
+            no_hp,
+            status_aktif
+            FROM Member
+            ORDER BY id_member DESC";
 
-                dataGridView2.DataSource = dt;
+                    SqlDataAdapter da = new SqlDataAdapter(query, conn);
+
+                    DataTable dt = new DataTable();
+
+                    da.Fill(dt);
+
+                    dataGridView2.DataSource = dt;
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Gagal menampilkan member terbaru: " + ex.Message);
             }
         }
 
-    }
-    }
-    
-    
+     
 
-    
+        private void BtnReset_Click(object sender, EventArgs e)
+        {
+            // Popup konfirmasi
+            DialogResult result = MessageBox.Show(
+                "Apakah anda ingin menghapus seluruh data?",
+                "Konfirmasi Hapus",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Warning
+            );
+
+            // Jika user pilih YES
+            if (result == DialogResult.Yes)
+            {
+                try
+                {
+                    using (SqlConnection conn = new SqlConnection(connectionString))
+                    {
+                        string query = "DELETE FROM Member";
+
+                        SqlCommand cmd = new SqlCommand(query, conn);
+
+                        conn.Open();
+                        cmd.ExecuteNonQuery();
+                    }
+
+                    // Refresh kedua tabel
+                    TampilkanData();
+                  
+                    UpdateTotalMember();
+
+                    MessageBox.Show("Seluruh data berhasil dihapus!", "Informasi");
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show("Gagal menghapus data: " + ex.Message);
+                }
+            }
+            else
+            {
+                MessageBox.Show("Penghapusan dibatalkan.", "Informasi");
+            }
+        }
+
+        private void bindingNavigator1_RefreshItems(object sender, EventArgs e)
+        {
+
+        }
+    }
+}
+
+       
+
+
 
 
 
