@@ -599,7 +599,7 @@ namespace Sistem_Manajemen_Data_Gym
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Gagal menampilkan member terbaru: " + ex.Message);
+                MessageBox.Show("Gagal menampilkan member terbaru: " + ex.Message); 
             }
         }
 
