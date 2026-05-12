@@ -228,7 +228,7 @@ namespace Sistem_Manajemen_Data_Gym
             else
             {
                 // Jika tidak ada yang dipilih (kosong), kembalikan ke warna putih
-                cbstatus.BackColor = Color.White;
+                cbstatus.BackColor = Color.White; 
             }
         }
 
