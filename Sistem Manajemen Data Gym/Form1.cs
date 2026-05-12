@@ -79,7 +79,7 @@ namespace Sistem_Manajemen_Data_Gym
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Gagal menampilkan data: " + ex.Message); 
+                MessageBox.Show("Gagal menampilkan data: " + ex.Message);
             }
         }
 
@@ -89,7 +89,7 @@ namespace Sistem_Manajemen_Data_Gym
                 0,
                 DateTime.Now.ToString("dd/MM/yyyy"),
                 aktivitas
-            ); 
+            );
         }
 
 
@@ -165,7 +165,7 @@ namespace Sistem_Manajemen_Data_Gym
             }
             else
             {
-                txtnama.BackColor = Color.White;
+                txtnama.BackColor = Color.White; 
             }
         }
 
