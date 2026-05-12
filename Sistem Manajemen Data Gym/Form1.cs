@@ -538,7 +538,7 @@ namespace Sistem_Manajemen_Data_Gym
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Gagal menghitung total member: " + ex.Message);
+                MessageBox.Show("Gagal menghitung total member: " + ex.Message); 
             }
         }
 
