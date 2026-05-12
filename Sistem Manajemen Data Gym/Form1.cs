@@ -199,7 +199,7 @@ namespace Sistem_Manajemen_Data_Gym
             }
             else
             {
-                txthp.BackColor = Color.White;
+                txthp.BackColor = Color.White; 
             }
         }
 
